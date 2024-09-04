@@ -33,4 +33,31 @@ describe 'Annotate annotate_models rake task and Annotate.set_defaults' do # rub
       it { is_expected.to be_truthy }
     end
   end
+
+  context 'when column_type is frozen' do
+    let(:klass) do
+      Class.new(ActiveRecord::Base) do
+        self.table_name = 'users'
+      end
+    end
+
+    before do
+      allow(klass).to receive(:columns).and_return([
+        double('Column', name: 'id', type: 'integer'.freeze, sql_type: 'integer', limit: nil, null: false, default: nil, comment: nil)
+      ])
+      allow(klass).to receive(:table_exists?).and_return(true)
+      allow(klass).to receive(:primary_key).and_return('id')
+    end
+
+    it 'does not raise an error when modifying column_type' do
+      expect {
+        AnnotateModels.get_schema_info(klass, "Schema Info", {})
+      }.not_to raise_error
+    end
+
+    it 'includes the column information in the schema info' do
+      schema_info = AnnotateModels.get_schema_info(klass, "Schema Info", {})
+      expect(schema_info).to include('id :integer')
+    end
+  end
 end
